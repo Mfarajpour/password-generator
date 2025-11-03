@@ -3,7 +3,7 @@ Password Generator - Flask Application
 A secure password generator with REST API
 """
 
-from flask import Flask, jsonify, request
+from flask import Flask, render_template, jsonify, request
 from datetime import datetime
 import secrets
 import string
@@ -79,17 +79,9 @@ def health():
 @app.route('/')
 def home():
     """
-    Home endpoint - API information
+    Home page - Render HTML interface
     """
-    return jsonify({
-        'message': 'Password Generator API',
-        'version': '1.0.0',
-        'endpoints': {
-            'health': '/health',
-            'generate': '/api/generate (POST)'
-        }
-    }), 200
-
+    return render_template('index.html')
 
 @app.route('/api/generate', methods=['POST'])
 def api_generate():

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Password Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .password-box {
+            background: #f7f7f7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #ddd;
+            font-family: 'Courier New', monospace;
+            font-size: 20px;
+            word-break: break-all;
+            text-align: center;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .btn-generate {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-generate:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-generate:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Password Generator</h1>
+        
+        <!-- Password Display Box -->
+        <div class="password-box" id="passwordDisplay">
+            Click Generate to create password
+        </div>
+        
+        <!-- Generate Button -->
+        <button class="btn-generate" onclick="generatePassword()">
+            ⚡ Generate Password
+        </button>
+    </div>
+    
+    <script>
+        // Function to generate password
+        function generatePassword() {
+            // Show loading message
+            document.getElementById('passwordDisplay').textContent = 'Generating...';
+            
+            // Call API
+            fetch('/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    length: 12,
+                    uppercase: true,
+                    lowercase: true,
+                    digits: true,
+                    symbols: true
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Display generated password
+                    document.getElementById('passwordDisplay').textContent = result.password;
+                } else {
+                    document.getElementById('passwordDisplay').textContent = '❌ Error';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('passwordDisplay').textContent = '❌ Error: ' + error.message;
+            });
+        }
+    </script>
+</body>
+</html>
