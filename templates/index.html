@@ -4,129 +4,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Password Generator</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 500px;
-            width: 100%;
-        }
-        
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 28px;
-        }
-        
-        .password-box {
-            background: #f7f7f7;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px dashed #ddd;
-            font-family: 'Courier New', monospace;
-            font-size: 20px;
-            word-break: break-all;
-            text-align: center;
-            color: #333;
-            font-weight: bold;
-        }
-        
-        .btn-generate {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .btn-generate:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-        
-        .btn-generate:active {
-            transform: translateY(0);
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>🔐 Password Generator</h1>
-        
-        <!-- Password Display Box -->
-        <div class="password-box" id="passwordDisplay">
-            Click Generate to create password
+        <div class="header">
+            <h1>🔐 Secure Password Generator</h1>
+            <p class="subtitle">Create strong, random passwords in seconds</p>
         </div>
-        
+
+        <!-- Password Display Box -->
+        <div class="password-section">
+            <div class="password-box" id="passwordDisplay">
+                Click Generate to create password
+            </div>
+            <button class="btn-copy" id="copyBtn" onclick="copyPassword()" disabled>
+                📋 Copy
+            </button>
+        </div>
+
+        <!-- Options Panel -->
+        <div class="options-panel">
+            <div class="option-group">
+                <label for="lengthSlider">Password Length: <span id="lengthValue">12</span></label>
+                <input type="range" id="lengthSlider" min="4" max="128" value="12" 
+                       oninput="updateLength(this.value)">
+            </div>
+
+            <div class="option-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="uppercaseCheck" checked>
+                    <span>Uppercase Letters (A-Z)</span>
+                </label>
+            </div>
+
+            <div class="option-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="lowercaseCheck" checked>
+                    <span>Lowercase Letters (a-z)</span>
+                </label>
+            </div>
+
+            <div class="option-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="digitsCheck" checked>
+                    <span>Numbers (0-9)</span>
+                </label>
+            </div>
+
+            <div class="option-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="symbolsCheck" checked>
+                    <span>Symbols (!@#$%...)</span>
+                </label>
+            </div>
+        </div>
+
         <!-- Generate Button -->
         <button class="btn-generate" onclick="generatePassword()">
             ⚡ Generate Password
         </button>
     </div>
-    
-    <script>
-        // Function to generate password
-        function generatePassword() {
-            // Show loading message
-            document.getElementById('passwordDisplay').textContent = 'Generating...';
-            
-            // Call API
-            fetch('/api/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    length: 12,
-                    uppercase: true,
-                    lowercase: true,
-                    digits: true,
-                    symbols: true
-                })
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    // Display generated password
-                    document.getElementById('passwordDisplay').textContent = result.password;
-                } else {
-                    document.getElementById('passwordDisplay').textContent = '❌ Error';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('passwordDisplay').textContent = '❌ Error: ' + error.message;
-            });
-        }
-    </script>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
