@@ -2,6 +2,7 @@
 services:
   web:
     build: .
+    image: password-generator:latest  
     container_name: password-generator
     ports:
       - "8080:5000"

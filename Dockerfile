@@ -17,5 +17,5 @@ COPY static/ static/
 # Expose port
 EXPOSE 5000
 
-#Run application
-CMD ["python3", "app.py"]
+# Run application with Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "app:app"]
