@@ -23,6 +23,18 @@
             </button>
         </div>
 
+        <!-- 🆕 Password Strength Indicator -->
+        <div class="strength-section" id="strengthSection" style="display: none;">
+            <div class="strength-header">
+                <span class="strength-label">Password Strength:</span>
+                <span class="strength-text" id="strengthText">-</span>
+            </div>
+            <div class="strength-bar-container">
+                <div class="strength-bar" id="strengthBar"></div>
+            </div>
+            <div class="strength-details" id="strengthDetails"></div>
+        </div>
+
         <!-- Options Panel -->
         <div class="options-panel">
             <div class="option-group">
@@ -64,6 +76,11 @@
         <button class="btn-generate" onclick="generatePassword()">
             ⚡ Generate Password
         </button>
+
+        <!-- 🆕 Footer Info -->
+        <div class="footer-info">
+            <small>🔒 All passwords generated locally in your browser</small>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>

@@ -57,7 +57,7 @@ h1 {
 .password-section {
     display: flex;
     gap: 10px;
-    margin-bottom: 25px;
+    margin-bottom: 15px;
 }
 
 .password-box {
@@ -109,6 +109,197 @@ h1 {
 
 .btn-copy.copied {
     background: #8b5cf6;
+}
+
+/* Strength Indicator */
+.strength-section {
+    background: #f9fafb;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        padding: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 300px;
+        padding: 20px;
+    }
+}
+
+.strength-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.strength-label {
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.strength-text {
+    font-size: 16px;
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+/* 🆕 5 Strength Levels */
+.strength-text.very-weak {
+    color: #dc2626;
+}
+
+.strength-text.weak {
+    color: #ef4444;
+}
+
+.strength-text.medium {
+    color: #f59e0b;
+}
+
+.strength-text.strong {
+    color: #3b82f6;
+}
+
+.strength-text.very-strong {
+    color: #10b981;
+}
+
+.strength-bar-container {
+    width: 100%;
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.strength-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 6px;
+    transition: all 0.5s ease;
+    background: #e5e7eb;
+}
+
+/* 🆕 5 Bar Levels */
+.strength-bar.very-weak {
+    width: 20%;
+    background: linear-gradient(90deg, #dc2626, #991b1b);
+    animation: pulse-red 1.5s infinite;
+}
+
+@keyframes pulse-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.strength-bar.weak {
+    width: 40%;
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.strength-bar.medium {
+    width: 60%;
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.strength-bar.strong {
+    width: 80%;
+    background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
+
+.strength-bar.very-strong {
+    width: 100%;
+    background: linear-gradient(90deg, #10b981, #059669);
+}
+
+/* 🆕 Warning Messages */
+.strength-warning {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.strength-warning.very-weak {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 2px solid #dc2626;
+}
+
+.strength-warning.weak {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #ef4444;
+}
+
+.strength-warning.medium {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.strength-warning.strong {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.strength-warning.very-strong {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* Strength Details */
+.strength-details {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.strength-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.strength-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.strength-badge.active {
+    background: #dbeafe;
+    color: #1e40af;
+    font-weight: 600;
+}
+
+.strength-crack-time {
+    font-size: 12px;
+    color: #4b5563;
+    padding: 8px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.strength-crack-time strong {
+    color: #1f2937;
+    font-weight: 700;
 }
 
 /* Options Panel */
@@ -219,6 +410,22 @@ input[type="range"]::-moz-range-thumb {
     transform: translateY(0);
 }
 
+/* Footer Info */
+.footer-info {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.footer-info small {
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
     .container {
@@ -235,5 +442,9 @@ input[type="range"]::-moz-range-thumb {
 
     .btn-copy {
         padding: 15px;
+    }
+    
+    .strength-metrics {
+        justify-content: center;
     }
 }
