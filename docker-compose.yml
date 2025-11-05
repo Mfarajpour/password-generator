@@ -1,0 +1,10 @@
+
+services:
+  web:
+    build: .
+    container_name: password-generator
+    ports:
+      - "8080:5000"
+    environment:
+      - DEBUG=False
+    restart: unless-stopped
