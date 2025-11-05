@@ -2,7 +2,7 @@
 services:
   web:
     build: .
-    image: password-generator:alpine
+    image: password-generator:latest
     container_name: password-generator
     ports:
       - "8080:5000"
@@ -11,17 +11,19 @@ services:
       - DEBUG=False
       - HOST=0.0.0.0
       - PORT=5000
-      - GUNICORN_WORKERS=4  # Override default
-      - LOG_LEVEL=info      # debug, info, warning, error
+      - GUNICORN_WORKERS=4
+      - LOG_LEVEL=info
     restart: unless-stopped
+    
+    # Health check using wget (built-in Alpine)
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
-    networks:
-      - app-network
+    
+    # Resource limits
     deploy:
       resources:
         limits:
@@ -30,6 +32,9 @@ services:
         reservations:
           cpus: '0.25'
           memory: 128M
+    
+    networks:
+      - app-network
 
 networks:
   app-network:
