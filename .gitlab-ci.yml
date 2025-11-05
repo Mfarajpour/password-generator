@@ -1,0 +1,36 @@
+# ============================================
+# GitLab CI/CD Pipeline - Stage : Test
+# ============================================
+
+stages:
+  - test
+
+variables:
+  IMAGE_NAME: "password-generator"
+
+# ============================================
+# Test Stage
+# ============================================
+test:
+  stage: test
+  tags:
+    - docker
+    - germany
+  image: python:3.11-alpine
+  
+  before_script:
+    - echo "Installing dependencies..."
+    - apk add --no-cache gcc musl-dev linux-headers
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+    - pip install pytest pytest-cov
+  
+  script:
+    - echo "Running tests..."
+    - pytest -v --cov=app --cov-report=term
+    - echo "All tests passed!"
+  
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  
+  only:
+    - main
