@@ -1,6 +1,7 @@
 stages:
   - test
   - build
+  - deploy
 
 variables:
   REGISTRY_URL: "87.248.154.24:5050"
@@ -54,4 +55,43 @@ build:
   only:
     - main
     - tags
+
+deploy:
+  stage: deploy
+  tags:
+    - docker
+    - iran
+    - build
+  image: docker:20.10
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+  before_script:
+    - apk add --no-cache curl
+    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin ${REGISTRY_URL}
+  script:
+    - echo "Pulling latest image..."
+    - docker pull ${REGISTRY_URL}/${IMAGE_NAME}:latest
+    - echo "Stopping old container..."
+    - docker stop password-generator || true
+    - docker rm password-generator || true
+    - echo "Starting new container..."
+    - docker run -d --name password-generator --restart unless-stopped -p 5000:5000 -e FLASK_ENV=production -e DEBUG=False ${REGISTRY_URL}/${IMAGE_NAME}:latest
+    - sleep 5
+    - docker ps | grep password-generator
+    - echo "Testing health..."
+    - curl -f http://87.248.154.9:5000/health
+    - echo "✅ Deployment successful!"
+    - echo "🚀 App at http://87.248.154.9:5000"
+  after_script:
+    - docker logout ${REGISTRY_URL} || true
+  environment:
+    name: production
+    url: http://87.248.154.9:5000
+  only:
+    - main
+    - tags
+  when: manual
+
+
+
 
