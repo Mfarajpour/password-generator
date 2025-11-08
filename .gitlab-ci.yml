@@ -3,6 +3,7 @@ stages:
   - build
 
 variables:
+  REGISTRY_URL: "87.248.154.24:5050"
   IMAGE_NAME: "password-generator"
 
 test:
@@ -16,6 +17,7 @@ test:
     - pip install -r requirements.txt pytest pytest-cov
   script:
     - pytest -v --cov=app
+    - echo "✅ Tests passed!"
   coverage: '/TOTAL.*\s+(\d+%)$/'
   only:
     - main
@@ -28,17 +30,28 @@ build:
     - germany
   image: docker:20.10
   services:
-    - docker:20.10-dind
+    - name: docker:20.10-dind
+      command: ["--insecure-registry=87.248.154.24:5050"]
   variables:
     DOCKER_TLS_CERTDIR: ""
     DOCKER_HOST: tcp://docker:2375
-  script:
-    - if [ -n "$CI_COMMIT_TAG" ]; then export VERSION="$CI_COMMIT_TAG"; export IS_RELEASE="true"; else export VERSION="dev-${CI_COMMIT_SHORT_SHA}"; export IS_RELEASE="false"; fi
+  before_script:
+    - sleep 5
+    - if [ -n "$CI_COMMIT_TAG" ]; then export VERSION="$CI_COMMIT_TAG"; else export VERSION="dev-${CI_COMMIT_SHORT_SHA}"; fi
     - echo "Version:" $VERSION
-    - echo "Is Release:" $IS_RELEASE
+    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin ${REGISTRY_URL}
+  script:
+    - echo "Building Docker image..."
     - docker build -t ${IMAGE_NAME}:${VERSION} .
-    - if [ "$IS_RELEASE" = "true" ]; then docker tag ${IMAGE_NAME}:${VERSION} ${IMAGE_NAME}:latest; fi
-    - docker images | grep ${IMAGE_NAME}
+    - docker tag ${IMAGE_NAME}:${VERSION} ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
+    - docker tag ${IMAGE_NAME}:${VERSION} ${REGISTRY_URL}/${IMAGE_NAME}:latest
+    - echo "Pushing to registry..."
+    - docker push ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
+    - docker push ${REGISTRY_URL}/${IMAGE_NAME}:latest
+    - echo "✅ Build and push completed!"
+  after_script:
+    - docker logout ${REGISTRY_URL} || true
   only:
     - main
     - tags
+
