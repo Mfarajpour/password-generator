@@ -6,6 +6,8 @@ stages:
 variables:
   REGISTRY_URL: "87.248.154.24:5050"
   IMAGE_NAME: "password-generator"
+  DEPLOY_SERVER: "87.248.154.9"
+  DEPLOY_PORT: "5000"
 
 test:
   stage: test
@@ -15,16 +17,18 @@ test:
   image: python:3.11-alpine
   before_script:
     - apk add --no-cache gcc musl-dev linux-headers
+    - pip install --upgrade pip
     - pip install -r requirements.txt pytest pytest-cov
   script:
-    - pytest -v --cov=app
-    - echo "✅ Tests passed!"
+    - pytest -v --cov=app --cov-report=term
+    - echo "Tests passed"
   coverage: '/TOTAL.*\s+(\d+%)$/'
   only:
     - main
+    - merge_requests
     - tags
 
-build:
+build:dev:
   stage: build
   tags:
     - docker
@@ -38,25 +42,51 @@ build:
     DOCKER_HOST: tcp://docker:2375
   before_script:
     - sleep 5
-    - if [ -n "$CI_COMMIT_TAG" ]; then export VERSION="$CI_COMMIT_TAG"; else export VERSION="dev-${CI_COMMIT_SHORT_SHA}"; fi
-    - echo "Version:" $VERSION
+    - export VERSION="dev-${CI_COMMIT_SHORT_SHA}"
+    - echo "Building dev version $VERSION"
     - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin ${REGISTRY_URL}
   script:
-    - echo "Building Docker image..."
     - docker build -t ${IMAGE_NAME}:${VERSION} .
     - docker tag ${IMAGE_NAME}:${VERSION} ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
-    - docker tag ${IMAGE_NAME}:${VERSION} ${REGISTRY_URL}/${IMAGE_NAME}:latest
-    - echo "Pushing to registry..."
     - docker push ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
-    - docker push ${REGISTRY_URL}/${IMAGE_NAME}:latest
-    - echo "✅ Build and push completed!"
+    - echo "Dev build completed"
   after_script:
     - docker logout ${REGISTRY_URL} || true
   only:
     - main
+  except:
     - tags
 
-deploy:
+build:release:
+  stage: build
+  tags:
+    - docker
+    - germany
+  image: docker:20.10
+  services:
+    - name: docker:20.10-dind
+      command: ["--insecure-registry=87.248.154.24:5050"]
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_HOST: tcp://docker:2375
+  before_script:
+    - sleep 5
+    - export VERSION="$CI_COMMIT_TAG"
+    - echo "Building release $VERSION"
+    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin ${REGISTRY_URL}
+  script:
+    - docker build -t ${IMAGE_NAME}:${VERSION} .
+    - docker tag ${IMAGE_NAME}:${VERSION} ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
+    - docker tag ${IMAGE_NAME}:${VERSION} ${REGISTRY_URL}/${IMAGE_NAME}:latest
+    - docker push ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
+    - docker push ${REGISTRY_URL}/${IMAGE_NAME}:latest
+    - echo "Release build completed"
+  after_script:
+    - docker logout ${REGISTRY_URL} || true
+  only:
+    - tags
+
+deploy:production:
   stage: deploy
   tags:
     - docker
@@ -66,32 +96,108 @@ deploy:
   variables:
     DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
-    - apk add --no-cache curl
+    - apk add --no-cache curl jq
+    - export VERSION="$CI_COMMIT_TAG"
+    - echo "Deploying version $VERSION to production"
     - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin ${REGISTRY_URL}
   script:
-    - echo "Pulling latest image..."
-    - docker pull ${REGISTRY_URL}/${IMAGE_NAME}:latest
-    - echo "Stopping old container..."
-    - docker stop password-generator || true
-    - docker rm password-generator || true
-    - echo "Starting new container..."
-    - docker run -d --name password-generator --restart unless-stopped -p 5000:5000 -e FLASK_ENV=production -e DEBUG=False ${REGISTRY_URL}/${IMAGE_NAME}:latest
-    - sleep 5
-    - docker ps | grep password-generator
-    - echo "Testing health..."
-    - curl -f http://87.248.154.9:5000/health
-    - echo "✅ Deployment successful!"
-    - echo "🚀 App at http://87.248.154.9:5000"
+    - echo "Target version is $VERSION"
+    - echo "Checking current version"
+    - docker inspect password-generator --format='{{.Config.Image}}' 2>/dev/null || echo "No container running"
+    - echo "Pulling version $VERSION"
+    - docker pull ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
+    - echo "Stopping current container"
+    - docker stop password-generator 2>/dev/null || true
+    - docker rm password-generator 2>/dev/null || true
+    - echo "Starting new container with version $VERSION"
+    - docker run -d --name password-generator --restart unless-stopped -p ${DEPLOY_PORT}:5000 -e FLASK_ENV=production -e DEBUG=False -e APP_VERSION="$VERSION" ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
+    - sleep 10
+    - echo "Verifying deployment"
+    - docker ps --filter "name=password-generator"
+    - echo "Health check response:"
+    - HEALTH_JSON=$(curl -s http://${DEPLOY_SERVER}:${DEPLOY_PORT}/health)
+    - echo "$HEALTH_JSON" | jq '.'
+    - DEPLOYED_VERSION=$(echo "$HEALTH_JSON" | jq -r '.version // "unknown"')
+    - echo "Expected version $VERSION"
+    - echo "Deployed version $DEPLOYED_VERSION"
+    - |
+      if [ "$DEPLOYED_VERSION" = "$VERSION" ]; then
+        echo "Version verified successfully"
+      elif [ "$DEPLOYED_VERSION" = "unknown" ]; then
+        echo "Warning: Version field not found in response but container is running"
+      else
+        echo "Version mismatch!"
+        exit 1
+      fi
+    - HEALTH_STATUS=$(echo "$HEALTH_JSON" | jq -r '.status')
+    - test "$HEALTH_STATUS" = "healthy" || (echo "Not healthy!" && exit 1)
+    - echo "Deployment successful - Version $VERSION is running"
   after_script:
     - docker logout ${REGISTRY_URL} || true
   environment:
     name: production
-    url: http://87.248.154.9:5000
+    url: http://${DEPLOY_SERVER}:${DEPLOY_PORT}
   only:
-    - main
     - tags
   when: manual
 
-
-
+rollback:production:
+  stage: deploy
+  tags:
+    - docker
+    - iran
+    - build
+  image: docker:20.10
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+  before_script:
+    - apk add --no-cache curl jq
+    - |
+      if [ -z "$ROLLBACK_TO" ]; then
+        echo "ERROR: ROLLBACK_TO variable not set"
+        echo ""
+        echo "Usage:"
+        echo "1. Go to CI/CD > Pipelines"
+        echo "2. Click Run pipeline"
+        echo "3. Select a tag (e.g., v1.0.1)"
+        echo "4. Add variable: Key=ROLLBACK_TO Value=v1.0.0"
+        echo "5. Run pipeline"
+        echo "6. Click rollback:production job"
+        exit 1
+      fi
+    - export VERSION="$ROLLBACK_TO"
+    - echo "Rolling back to version $VERSION"
+    - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin ${REGISTRY_URL}
+  script:
+    - echo "Current running version:"
+    - docker inspect password-generator --format='{{.Config.Image}}' 2>/dev/null || echo "Unknown"
+    - echo "Pulling rollback version $VERSION"
+    - docker pull ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
+    - echo "Stopping current container"
+    - docker stop password-generator 2>/dev/null || true
+    - docker rm password-generator 2>/dev/null || true
+    - echo "Starting rollback version $VERSION"
+    - docker run -d --name password-generator --restart unless-stopped -p ${DEPLOY_PORT}:5000 -e FLASK_ENV=production -e DEBUG=False -e APP_VERSION="$VERSION" ${REGISTRY_URL}/${IMAGE_NAME}:${VERSION}
+    - sleep 10
+    - echo "Verifying rollback"
+    - docker ps --filter "name=password-generator"
+    - HEALTH_JSON=$(curl -s http://${DEPLOY_SERVER}:${DEPLOY_PORT}/health)
+    - echo "$HEALTH_JSON" | jq '.'
+    - ROLLED_VERSION=$(echo "$HEALTH_JSON" | jq -r '.version // "unknown"')
+    - echo "Expected version $VERSION"
+    - echo "Rolled back version $ROLLED_VERSION"
+    - |
+      if [ "$ROLLED_VERSION" = "$VERSION" ]; then
+        echo "Rollback verified successfully"
+      else
+        echo "Warning: Version is $ROLLED_VERSION but container is running"
+      fi
+    - echo "Rollback to $VERSION completed"
+  after_script:
+    - docker logout ${REGISTRY_URL} || true
+  environment:
+    name: production
+  only:
+    - tags
+  when: manual
 
