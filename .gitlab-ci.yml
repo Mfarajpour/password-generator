@@ -2,6 +2,7 @@ stages:
   - test
   - build
   - deploy
+  - cleanup
 
 variables:
   REGISTRY_URL: "87.248.154.24:5050"
@@ -201,3 +202,40 @@ rollback:production:
     - tags
   when: manual
 
+cleanup:
+  stage: cleanup
+  tags:
+    - docker
+    - iran
+    - build
+  image: docker:20.10
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+  script:
+    - echo "=== Cleanup Deployment Server ==="
+    - echo ""
+    - echo "Images BEFORE cleanup:"
+    - docker images --filter "reference=${REGISTRY_URL}/${IMAGE_NAME}:*"
+    - echo ""
+    - RUNNING_IMAGE=$(docker inspect password-generator --format='{{.Config.Image}}' 2>/dev/null || echo "none")
+    - echo "Currently running:$RUNNING_IMAGE"
+    - echo ""
+    - echo "Removing unused images..."
+    - docker image prune -af --filter "until=24h"
+    - echo ""
+    - docker images --filter "reference=87.248.154.24:5050/password-generator:*" --format "{{.Repository}}:{{.Tag}}" | grep -v "^${RUNNING_IMAGE}$" | xargs -r docker rmi 2>/dev/null || true
+    - echo "Images AFTER cleanup:"
+    - docker images --filter "reference=${REGISTRY_URL}/${IMAGE_NAME}:*"
+    - echo ""
+    - echo "Disk usage:"
+    - df -h /
+    - echo ""
+    - echo "Docker disk usage:"
+    - docker system df
+    - echo ""
+    - echo "Cleanup completed!"
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  allow_failure: true
+    
